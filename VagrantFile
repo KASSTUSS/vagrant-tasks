@@ -8,8 +8,7 @@ $script_ubuntu = <<-SCRIPT
 SCRIPT
 
 $script_centos = <<-SCRIPT
-    sudo apt-get update
-    sudo apt-get install -y git
+    sudo yum install -y git
     git config --global user.name "Chvalov K. R."
     git config --global user.email "kostya2003112015@gmail.com"
     git clone -b Module2 https://github.com/KASSTUSS/vagrant-tasks.git
