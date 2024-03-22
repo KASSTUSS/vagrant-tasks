@@ -8,6 +8,10 @@ $script_ubuntu = <<-SCRIPT
 SCRIPT
 
 $script_centos = <<-SCRIPT
+    sudo cd /etc/yum.repos.d/
+    sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+    sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+    sudo yum update -y
     sudo yum install -y git
     git config --global user.name "Chvalov K. R."
     git config --global user.email "kostya2003112015@gmail.com"
