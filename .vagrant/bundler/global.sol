@@ -1,1 +1,0 @@
-{"dependencies":[["highline",["= 3.0.1"]]],"checksum":"dee5b2e5c4d8ac42a055c9fe300d4421aa3f88ad4a0f6f5a536a6727ce8e8c27","vagrant_version":"2.4.1"}
