@@ -1,0 +1,74 @@
+require 'highline/import'
+
+NUM_NODES = 1
+IP_NTW = "192.168.14."
+WEBSERVER_IP_NODE = "10"
+NODE_APP_IP_START = 20
+
+
+Vagrant.configure("2") do |config|
+
+  if ARGV[0] == 'up'
+    NUM_NODES = ask("Enter quantity VM (1-8): ", Integer) { |q| q.in = 1..8 }
+  end
+  if ARGV[0] != 'up'
+    NUM_NODES = 8
+  end
+
+
+  # Config WEB server
+  config.vm.define "webserver" do |webserver|
+    webserver.vm.box = "mydebian-webserver"
+    webserver.vm.provider "virtualbox" do |vb|
+          vb.name = "webserver"
+    end
+
+      webserver.vm.hostname = "webserver"
+      webserver.vm.network "private_network", ip: IP_NTW + WEBSERVER_IP_NODE
+      webserver.vm.network "forwarded_port", guest: 80, host: "8888", protocol: "tcp"
+
+      webserver.vm.provision "shell", inline: <<-SHELL
+        sudo systemctl start nginx
+        cd /etc/nginx/sites-available/
+        # Configure load balancing
+        echo "http {" | sudo tee /etc/nginx/nginx.conf
+        echo "    upstream backend {" | sudo tee -a /etc/nginx/nginx.conf
+        for i in {#{NODE_APP_IP_START+1}..#{NODE_APP_IP_START+NUM_NODES-1}}
+        do
+          echo "        server #{IP_NTW}$i:8080;" | sudo tee -a /etc/nginx/nginx.conf
+        done
+        echo "    }" | sudo tee -a /etc/nginx/nginx.conf
+        echo "    server {" | sudo tee -a /etc/nginx/nginx.conf
+        echo "        listen 80 default_server;" | sudo tee -a /etc/nginx/nginx.conf
+        echo "        listen [::]:80 default_server;" | sudo tee -a /etc/nginx/nginx.conf
+        echo "        location / {" | sudo tee -a /etc/nginx/nginx.conf
+        echo "            proxy_pass http://backend;" | sudo tee -a /etc/nginx/nginx.conf
+        echo "        }" | sudo tee -a /etc/nginx/nginx.conf
+        echo "    }" | sudo tee -a /etc/nginx/nginx.conf
+        echo "}" | sudo tee -a /etc/nginx/nginx.conf
+        echo "events {}" | sudo tee -a /etc/nginx/nginx.conf 
+        # Restart NGINX
+        sudo service nginx restart
+      SHELL
+    end
+
+
+
+  # Config APP servers
+  (1..(NUM_NODES-1)).each do |i|
+    config.vm.define "appserver#{i}" do |node|
+      node.vm.box = "mydebian-appserver"
+      node.vm.provider "virtualbox" do |vb|
+          vb.name = "appserver#{i}"
+      end
+
+      node.vm.hostname = "appserver#{i}"
+      node.vm.network "private_network", ip: IP_NTW + "#{NODE_APP_IP_START + i}"
+
+      node.vm.provision "shell", inline: <<-SHELL
+        sudo sed -i 's/Connector port="8080"/Connector port="8080" address="0.0.0.0"/' /opt/tomcat/conf/server.xml
+        echo "Welcome to Tomcat on appserver#{i}!" > /opt/tomcat/webapps/ROOT/index.jsp
+      SHELL
+    end
+  end
+end
